@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "ConvertToUHD": {
+      "commandName": "Project",
+      "commandLineArgs": "\"C:\\tmp\\LANDMAN 201 Dub Card.xlsx\" \"C:\\tmp\\out\\LANDMAN 201 Dub Card.pdf\""
+    }
+  }
+}
