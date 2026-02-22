@@ -203,8 +203,50 @@ internal static class Programm
         }
     }
 
+
+
+    /// <summary>
+    /// Creates a UHD Image (default 3840x2160) with a solid black background
+    /// and draws the provided overlay image centered and proportionally scaled
+    /// onto the canvas without distortion.
+    /// </summary>
+    /// <param name="overlay">
+    /// The source image that will be drawn onto the UHD canvas.
+    /// The image is scaled proportionally to fit within the target dimensions
+    /// while preserving its aspect ratio.
+    /// </param>
+    /// <param name="outputFile">
+    /// Full file path where the resulting PNG image will be written.
+    /// Existing files will be overwritten.
+    /// </param>
+    /// <param name="targetW">
+    /// Taeget canvas width in pixels. Default is 3840 (UHD width)
+    /// </param>
+    /// <param name="targetH">
+    /// Target canvas height in pixels. Default is 2160 (UHD height). 
+    /// </param>
+    /// <remarks>
+    /// Rendering behavior:
+    /// - The background is filled with solid black.
+    /// - The overlay image is scaled using aspect-ratio-preserving fit logic.
+    /// - No stretching or distortion is applied.
+    /// - If aspect ratios differ, letterboxing (black margins) will appear.
+    /// - High quality bicubic interpolation is used for scaling.
+    /// 
+    /// This method assumes the overlay image may contain transparency
+    /// (e.g. white text with alpha channel).
+    /// </remarks>
+    /// <exception cref="ArgumentNullException">
+    /// Thrown if the overlay image is null.
+    /// </exception>
+    /// <exception cref="ExternalException">
+    /// Thrown if saving the PNG file fails.
+    /// </exception>
     private static void SaveUhdCanvasWithCenteredImage(Image overlay, string outputFile, int targetW = 3840, int targetH =2160)
     {
+        if (overlay == null)
+            throw new ArgumentNullException(nameof(overlay));
+
         using var uhd = new Bitmap(targetW, targetH, PixelFormat.Format32bppArgb);
 
         using (var g = Graphics.FromImage(uhd))
@@ -232,8 +274,56 @@ internal static class Programm
         uhd.Save(outputFile, ImageFormat.Png);
     }
 
+    /// <summary>
+    /// Converts a rendered PDF/Excel page bitmap (typically black text on white background)
+    /// into a new bitmap containing white text/lines on a transparent background.
+    /// </summary>
+    /// <param name="input">
+    /// Source bitmap to process. Expected to be <see cref="PixelFormat.Format32bppArgb"/>.
+    /// Dark pxles are treated as foreground (text/lines), bright pixels as background.
+    /// </param>
+    /// <param name="backgroundCutoff">
+    /// Brightness threshold (0..255) at or above which pixels are treated as background and become fully transparent.
+    /// Higher values keep more near-white pixels transparent (good for clean white backgrounds).
+    /// Default is 245. 
+    /// </param>
+    /// <param name="gamma">
+    /// Gamma adjustment applied to the computed alpha of foreground pixels.
+    /// Use values &lt; 1.0 to make edges stronger/inkier, and values &gt; 1.0 to make edges thinner/softer.
+    /// Default is 1.0 (no adjustment).
+    /// </param>
+    /// <returns>
+    /// A new <see cref="Bitmap"/> in <see cref="PixelFormat.Format32bppArgb"/> where:
+    /// - RGB is always white (255,255,255)
+    /// - Alpha encodes the original pixel darkness (anti-aliased edges become partially transparent)
+    /// </returns>
+    /// <remarks>
+    /// Implementation details:
+    /// - Computes pixel luminance using Rec.709 coefficients (0.2126 R + 0.7152 G + 0.0722 B).
+    /// - Background pixels (lum &gt;= <paramref name="backgroundCutoff"/>) become fully transparent.
+    /// - Foreground pixels become white with alpha derived from "darkness": alpha = 255 - lum.
+    /// - The alpha can be gamma-shaped to control perceived stroke weight.
+    /// 
+    /// Typical use case:
+    /// - After rasterizing a PDF page to an image, call this method to obtain a white-on-transparent overlay.
+    /// - Draw that overlay onto a black UHD canvas to produce "white text on black background" output.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException">
+    /// Thrown if <paramref name="input"/> is null.
+    /// </exception>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// Thrown if <paramref name="backgroundCutoff"/> or <paramref name="gamma"/> are outside valid ranges.
+    /// </exception>
+    /// <exception cref="ArgumentException">
+    /// Thrown if <paramref name="input"/> is not in <see cref="PixelFormat.Format32bppArgb"/>.
+    /// </exception>
     private static Bitmap ToWhiteTextTransparentBackground(Bitmap input, byte backgroundCutoff = 245, float gamma = 1.0f)
     {
+        if (input is null) throw new ArgumentNullException(nameof(input));
+        if (gamma <= 0f) throw new ArgumentOutOfRangeException(nameof(gamma), "Gamma must be > 0.");
+        if (input.PixelFormat != PixelFormat.Format32bppArgb)
+            throw new ArgumentException("Input bitmap must be Format32bppArgb.", nameof(input));
+
         var output = new Bitmap(input.Width, input.Height, PixelFormat.Format32bppArgb);
 
         var rect = new Rectangle(0, 0, input.Width, input.Height);
@@ -293,7 +383,4 @@ internal static class Programm
             output.UnlockBits(dstData);
         }
     }
-
-
-
 }
