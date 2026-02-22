@@ -1,8 +1,10 @@
 ﻿using System;
+using System.Drawing.Imaging;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading;
 using Excel = Microsoft.Office.Interop.Excel;
+using PdfiumViewer;
 
 internal static class Programm
 {
@@ -45,12 +47,23 @@ internal static class Programm
             if (!File.Exists(outputPath))
                 throw new IOException("Excel export reported success, but PDF was not created: " + outputPath);
 
-            return 0;
         }
         catch (Exception ex)
         {
             Console.WriteLine("Error: " + ex.Message);
             return 2;   
+        }
+
+        if (args.Length >= 3)
+        {
+            var pngDir = Path.GetFullPath(args[2]);
+            ConvertPdfToPngPages(outputPath, pngDir, dpi: 300);
+            Console.WriteLine("PDF -> PNG done: " + pngDir);
+            return 0;
+        }else
+        {
+            Console.WriteLine("PNG Path not found.");
+            return 2;
         }
     }
 
@@ -126,5 +139,23 @@ internal static class Programm
             GC.WaitForPendingFinalizers();
         }
     }
-}
 
+    private static void ConvertPdfToPngPages(string pdfPath, string outputDir, int dpi = 300)
+    {
+        if (!File.Exists(pdfPath))
+            throw new FileNotFoundException("PDF not found", pdfPath);
+
+        Directory.CreateDirectory(outputDir);
+
+        using var doc = PdfDocument.Load(pdfPath);
+
+        for (int page = 0; page < doc.PageCount; page++)
+        {
+            // Render: dipX, dpiY, forPrinting
+            using var img = doc.Render(page, dpi, dpi, false);
+
+            var fileName = Path.Combine(outputDir, $"page_{page + 1:000}.png");
+            img.Save(fileName, ImageFormat.Png);
+        }
+    }
+}
