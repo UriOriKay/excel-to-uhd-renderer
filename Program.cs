@@ -149,12 +149,14 @@ internal static class Programm
 
         using var doc = PdfDocument.Load(pdfPath);
 
+        var baseName = Path.GetFileNameWithoutExtension(pdfPath);
+
         for (int page = 0; page < doc.PageCount; page++)
         {
             // Render: dipX, dpiY, forPrinting
             using var img = doc.Render(page, dpi, dpi, false);
 
-            var fileName = Path.Combine(outputDir, $"page_{page + 1:000}.png");
+            var fileName = Path.Combine(outputDir, $"{baseName}-{page + 1:00}.png");
             img.Save(fileName, ImageFormat.Png);
         }
     }
