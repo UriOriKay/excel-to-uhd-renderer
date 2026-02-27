@@ -11,10 +11,8 @@ internal sealed class ExcelToUhdConverter
     {
         ConvertExcelToPdf(inputPath, outputPdfPath);
         ConvertPdfToPngPages(outputPdfPath, pngOutputDir, dpi: 400);
-        // methods calls here
+        DeletePdfFile(outputPdfPath);
     }
-
-    // Methods here.
 
     /// <summary>
     /// Converts an Excel workbook to a PDF file using Excel Interop
@@ -329,5 +327,18 @@ internal sealed class ExcelToUhdConverter
         }
 
         uhd.Save(outputFile, ImageFormat.Png);
+    }
+
+    private static void DeletePdfFile(string path)
+    {
+        try
+        {
+            if (File.Exists(path))
+                File.Delete(path);
+        }
+        catch 
+        {
+            // Intentionally ignore delete failures
+        }
     }
 }
