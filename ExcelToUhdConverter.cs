@@ -7,11 +7,17 @@ using Excel = Microsoft.Office.Interop.Excel;
 
 internal sealed class ExcelToUhdConverter
 {
-    public void Convert(string inputPath, string outputPdfPath, string pngOutputDir)
+    public void Convert(string inputPath, string outputPdfPath, string pngOutputDir, Action<string>? logger = null)
     {
-        ConvertExcelToPdf(inputPath, outputPdfPath);
-        ConvertPdfToPngPages(outputPdfPath, pngOutputDir, dpi: 400);
-        DeletePdfFile(outputPdfPath);
+        try
+        {
+            ConvertExcelToPdf(inputPath, outputPdfPath);
+            ConvertPdfToPngPages(outputPdfPath, pngOutputDir, dpi: 400);
+        }
+        finally
+        {
+            DeletePdfFile(outputPdfPath,logger);
+        }
     }
 
     /// <summary>
@@ -329,16 +335,29 @@ internal sealed class ExcelToUhdConverter
         uhd.Save(outputFile, ImageFormat.Png);
     }
 
-    private static void DeletePdfFile(string path)
+    /// <summary>
+    /// Attempts to delete the specified file.
+    /// </summary>
+    /// <param name="path">
+    /// The full path of the file to delete
+    /// </param>
+    /// <param name="logger">
+    /// Optional logging callback invoked if deletion fails.
+    /// </param>
+    /// <remarks>
+    /// This method performs a best-effort deletion.
+    /// Exceptions are not rethrown but can be logged via provided logger.
+    /// </remarks>
+    private static void DeletePdfFile(string path, Action<string>? logger = null)
     {
         try
         {
             if (File.Exists(path))
                 File.Delete(path);
         }
-        catch 
+        catch (Exception ex)
         {
-            // Intentionally ignore delete failures
+            logger?.Invoke($"Warning: failed to delete temporary file '{path}'. {ex.Message} ");
         }
     }
 }

@@ -32,7 +32,7 @@
         try
         {
             var converter = new ExcelToUhdConverter();
-            converter.Convert(inputPath, outputPdfPath, pngDir);
+            converter.Convert(inputPath, outputPdfPath, pngDir, message => Console.WriteLine(message));
 
             Console.WriteLine("Conversion successful.");
             return 0;
