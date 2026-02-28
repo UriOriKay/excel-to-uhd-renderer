@@ -4,8 +4,17 @@
     /// Entry poin of the applicaton.
     /// Expects two arguments:
     /// 1) Input Excel file (.xlsx)
-    /// 2) Output PDF file (.pdf)
+    /// 2) Output directory for generated PNG files
     /// </summary>
+    /// <param name="args">
+    /// Command-line arguments.
+    /// </param>
+    /// <returns>
+    /// Process exit code:
+    /// 0 = success,
+    /// 1 = invalid arguments / input not found,
+    /// 2 = runtime error.
+    /// </returns>
     [STAThread]
     private static int Main(string[] args)
     {
