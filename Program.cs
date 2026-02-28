@@ -16,11 +16,9 @@
         }
 
         string inputPath = Path.GetFullPath(args[0]);
-        string outputPdfPath = Path.GetFullPath(args[1]);
-        string pngDir = Path.GetFullPath(args[2]);
+        string pngDir = Path.GetFullPath(args[1]);
 
         Console.WriteLine("Input : " + inputPath);
-        Console.WriteLine("Output: " + outputPdfPath);
         Console.WriteLine("Output: " + pngDir);
 
         if (!File.Exists(inputPath)) 
@@ -32,7 +30,7 @@
         try
         {
             var converter = new ExcelToUhdConverter();
-            converter.Convert(inputPath, outputPdfPath, pngDir, message => Console.WriteLine(message));
+            converter.Convert(inputPath, pngDir, message => Console.WriteLine(message));
 
             Console.WriteLine("Conversion successful.");
             return 0;

@@ -7,12 +7,26 @@ using Excel = Microsoft.Office.Interop.Excel;
 
 internal sealed class ExcelToUhdConverter
 {
+    public void Convert(string inputPath, string pngOutputDir, Action<string>? logger = null)
+    {
+        // Create a unique temporary PDF path (intermediate file)
+        string tempPdfPath = Path.Combine(
+            Path.GetTempPath(),
+            $"{Path.GetFileNameWithoutExtension(inputPath)}-{Guid.NewGuid():N}.pdf"
+            );
+
+        Convert(inputPath, tempPdfPath, pngOutputDir, logger);
+    }
+
     public void Convert(string inputPath, string outputPdfPath, string pngOutputDir, Action<string>? logger = null)
     {
         try
         {
+
+            string baseName = Path.GetFileNameWithoutExtension(inputPath);
+
             ConvertExcelToPdf(inputPath, outputPdfPath);
-            ConvertPdfToPngPages(outputPdfPath, pngOutputDir, dpi: 400);
+            ConvertPdfToPngPages(outputPdfPath, pngOutputDir, baseName, dpi: 400);
         }
         finally
         {
@@ -126,7 +140,7 @@ internal sealed class ExcelToUhdConverter
     /// <return>
     /// Nothing. PNG files are written to disk as a side effect.
     /// </return>
-    private static void ConvertPdfToPngPages(string pdfPath, string outputDir, int dpi = 300)
+    private static void ConvertPdfToPngPages(string pdfPath, string outputDir, string baseName, int dpi = 300)
     {
         if (!File.Exists(pdfPath))
             throw new FileNotFoundException("PDF not found", pdfPath);
@@ -134,8 +148,6 @@ internal sealed class ExcelToUhdConverter
         Directory.CreateDirectory(outputDir);
 
         using var doc = PdfDocument.Load(pdfPath);
-
-        var baseName = Path.GetFileNameWithoutExtension(pdfPath);
 
         for (int page = 0; page < doc.PageCount; page++)
         {
