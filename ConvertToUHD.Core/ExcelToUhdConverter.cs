@@ -1,3 +1,4 @@
+
 using PdfiumViewer;
 using System.Drawing;
 using System.Drawing.Drawing2D;
@@ -5,8 +6,37 @@ using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
 using Excel = Microsoft.Office.Interop.Excel;
 
-internal sealed class ExcelToUhdConverter
+namespace ConvertToUHD.Core;
+
+public sealed class ExcelToUhdConverter
 {
+    /// <summary>
+    /// Converts an Excel workbook into UHS PNG images.
+    /// </summary>
+    /// <param name="inputPath">
+    /// Output directory where the generated PNG files will be written.
+    /// The directory will be created if it dies not exist.
+    /// </param>
+    /// <param name="pngOutputDir">
+    /// Output directory where the generated PNG files will be written.
+    /// The directory will be created if it dies ot exist.
+    /// </param>
+    /// <param name="logger">
+    /// Optional logging callback used for non-fatal warnings (e.g. cleanup failures).
+    /// </param>
+    /// <remarks>
+    /// This overload does not require an explicit PDF path.
+    /// An intermediate PDF is created in the user's temporary directory and removed after conversion.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException">
+    /// Thrown if <paramref name="inputPath"/> or <paramref name="pngOutputDir"/> is null.
+    /// </exception>
+    /// <expection cref="FileNotFoundException">
+    /// Thrown if <paramref name="inputPath"/> does not exist
+    /// </expection>
+    /// <exception cref="Exception">
+    /// Propagates any conversion errors (Excel export, PDF rendering, image processing).
+    /// </exception>
     public void Convert(string inputPath, string pngOutputDir, Action<string>? logger = null)
     {
         // Create a unique temporary PDF path (intermediate file)
@@ -18,6 +48,36 @@ internal sealed class ExcelToUhdConverter
         Convert(inputPath, tempPdfPath, pngOutputDir, logger);
     }
 
+    /// <summary>
+    /// Converts an Excel workbook into UHD PNG images using the specified intermediate PDF path.
+    /// </summary>
+    /// <param name="inputPath">
+    /// Full path to the input Excel file (.xlsx).
+    /// </param>
+    /// <param name="outputPdfPath">
+    /// Full path of the intermediate PDF file to create.
+    /// This file is treated as a temporary artifact and will be deleted after conversion.
+    /// </param>
+    /// <param name="pngOutputDir">
+    /// Output directory where the generated PNG files will be written.
+    /// The directory will be created if it does not exist.
+    /// </param>
+    /// <param name="logger">
+    /// Optional logging callback used for non-fatal warnings (e.g. cleanup failures).
+    /// </param>
+    /// <remarks>
+    /// The intermediate PDF is always cleaned up in a <c>finally</c> block (best effort).
+    /// PNG filenames are derived from the Excel input filename (not the PDF filename).
+    /// </remarks>
+    /// <exception cref="ArgumentNullException">
+    /// Thrown if any required argument is null.
+    /// </exception>
+    /// <exception cref="FileNotFoundException">
+    /// Thrown if <paramref name="inputPath"/> does not exist.
+    /// </exception>
+    /// <exception cref="Exception">
+    /// Propagates any conversion errors (Excel export, PDF rendering, image processing).
+    /// </exception>
     public void Convert(string inputPath, string outputPdfPath, string pngOutputDir, Action<string>? logger = null)
     {
         try
@@ -122,6 +182,10 @@ internal sealed class ExcelToUhdConverter
     /// Directory where the generated PNG files will be written.
     /// The directory will be created if it does not exist
     /// </param>
+    /// <param name="baseName">
+    /// Base filename used for the generated PNG files (without extension).
+    /// The page number is append as a two-digit suffix (e.g. "document-01.png).
+    /// </param>
     /// <param name="dpi">
     /// Rendering resolution in dots per inch
     /// Higher values increase image quality and file size
@@ -132,14 +196,9 @@ internal sealed class ExcelToUhdConverter
     /// </exception>
     /// <remarks>
     /// - One Png file is generated per PDF page.
-    /// - File names are based on the PDF file name with a sequential suffix
-    ///   (e.g. "document-01.png").
     /// - Uses PdfiumViewer for rendering (native PDFium dependency).
     /// - Only supported on Windows due to System.Drawing and PDFium usage.
     /// </remarks>
-    /// <return>
-    /// Nothing. PNG files are written to disk as a side effect.
-    /// </return>
     private static void ConvertPdfToPngPages(string pdfPath, string outputDir, string baseName, int dpi = 300)
     {
         if (!File.Exists(pdfPath))
