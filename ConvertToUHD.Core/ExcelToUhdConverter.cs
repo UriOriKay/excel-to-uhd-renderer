@@ -8,35 +8,34 @@ using Excel = Microsoft.Office.Interop.Excel;
 
 namespace ConvertToUHD.Core;
 
+/// <summary>
+/// Provides functionality to convert Excel (.xlsx) files into UHD PNG images.
+/// 
+/// Conversion pipeline:
+/// 1. Excel workbook → temporary PDF (via Microsoft Office Interop)
+/// 2. PDF → rasterized bitmap (via Pdfium)
+/// 3. Bitmap → white text on transparent background
+/// 4. Final UHD (3840x2160) black canvas rendering
+/// 
+/// The temporary PDF file is deleted automatically after conversion.
+/// 
+/// Notes:
+/// - Requires Microsoft Excel installed on the machine.
+/// - Requires matching platform target (x86/x64) with installed Excel.
+/// - Uses native PDFium dependency.
+/// </summary>
 public sealed class ExcelToUhdConverter
 {
     /// <summary>
-    /// Converts an Excel workbook into UHS PNG images.
+    /// Converts an Excel file into UHD PNG images using a specific PDF output path.
     /// </summary>
-    /// <param name="inputPath">
-    /// Output directory where the generated PNG files will be written.
-    /// The directory will be created if it dies not exist.
-    /// </param>
-    /// <param name="pngOutputDir">
-    /// Output directory where the generated PNG files will be written.
-    /// The directory will be created if it dies ot exist.
-    /// </param>
-    /// <param name="logger">
-    /// Optional logging callback used for non-fatal warnings (e.g. cleanup failures).
-    /// </param>
+    /// <param name="inputPath">Full path to the source .xlsx file.</param>
+    /// <param name="outputPdfPath">Path where the intermediate PDF will be created.</param>
+    /// <param name="pngOutputDir">Directory where PNG images will be written.</param>
+    /// <param name="logger">Optional logging callback.</param>
     /// <remarks>
-    /// This overload does not require an explicit PDF path.
-    /// An intermediate PDF is created in the user's temporary directory and removed after conversion.
+    /// The intermediate PDF file will be deleted in a finally block.
     /// </remarks>
-    /// <exception cref="ArgumentNullException">
-    /// Thrown if <paramref name="inputPath"/> or <paramref name="pngOutputDir"/> is null.
-    /// </exception>
-    /// <expection cref="FileNotFoundException">
-    /// Thrown if <paramref name="inputPath"/> does not exist
-    /// </expection>
-    /// <exception cref="Exception">
-    /// Propagates any conversion errors (Excel export, PDF rendering, image processing).
-    /// </exception>
     public void Convert(string inputPath, string pngOutputDir, Action<string>? logger = null)
     {
         // Create a unique temporary PDF path (intermediate file)
@@ -49,40 +48,19 @@ public sealed class ExcelToUhdConverter
     }
 
     /// <summary>
-    /// Converts an Excel workbook into UHD PNG images using the specified intermediate PDF path.
+    /// Converts an Excel file into UHD PNG images using a specific PDF output path.
     /// </summary>
-    /// <param name="inputPath">
-    /// Full path to the input Excel file (.xlsx).
-    /// </param>
-    /// <param name="outputPdfPath">
-    /// Full path of the intermediate PDF file to create.
-    /// This file is treated as a temporary artifact and will be deleted after conversion.
-    /// </param>
-    /// <param name="pngOutputDir">
-    /// Output directory where the generated PNG files will be written.
-    /// The directory will be created if it does not exist.
-    /// </param>
-    /// <param name="logger">
-    /// Optional logging callback used for non-fatal warnings (e.g. cleanup failures).
-    /// </param>
+    /// <param name="inputPath">Full path to the source .xlsx file.</param>
+    /// <param name="outputPdfPath">Path where the intermediate PDF will be created.</param>
+    /// <param name="pngOutputDir">Directory where PNG images will be written.</param>
+    /// <param name="logger">Optional logging callback.</param>
     /// <remarks>
-    /// The intermediate PDF is always cleaned up in a <c>finally</c> block (best effort).
-    /// PNG filenames are derived from the Excel input filename (not the PDF filename).
+    /// The intermediate PDF file will be deleted in a finally block.
     /// </remarks>
-    /// <exception cref="ArgumentNullException">
-    /// Thrown if any required argument is null.
-    /// </exception>
-    /// <exception cref="FileNotFoundException">
-    /// Thrown if <paramref name="inputPath"/> does not exist.
-    /// </exception>
-    /// <exception cref="Exception">
-    /// Propagates any conversion errors (Excel export, PDF rendering, image processing).
-    /// </exception>
     public void Convert(string inputPath, string outputPdfPath, string pngOutputDir, Action<string>? logger = null)
     {
         try
         {
-
             string baseName = Path.GetFileNameWithoutExtension(inputPath);
 
             ConvertExcelToPdf(inputPath, outputPdfPath);
@@ -147,6 +125,8 @@ public sealed class ExcelToUhdConverter
             if (!File.Exists(outputPath))
                 throw new IOException("Excel export reported success, but PDF was not created: " + outputPath);
         }
+        // Explicit COM cleanup is required when using Office Interop.
+        // Failing to release COM objects may leave orphaned Excel.exe processes.
         finally
         {
             // CLose workbook safely
